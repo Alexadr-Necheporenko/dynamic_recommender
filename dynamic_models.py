@@ -21,6 +21,8 @@ class NARX(nn.Module):
         
         # Get the output from the last time step
         output = self.fc(lstm_out[:, -1, :])
+        # Squeeze the last dimension if it's 1
+        output = output.squeeze(-1)
         return output, hidden
 
 class DynamicLSTM(nn.Module):
@@ -40,6 +42,8 @@ class DynamicLSTM(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         lstm_out, _ = self.lstm(x)
         predictions = self.fc(lstm_out[:, -1, :])
+        # Squeeze the last dimension to match target shape
+        predictions = predictions.squeeze(-1)
         return predictions
 
 class SystemIdentification:

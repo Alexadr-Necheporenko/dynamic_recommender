@@ -59,12 +59,17 @@ class DataPreprocessor:
         """
         Fill missing values in the dataset
         """
-        # Fill missing ratings with mean rating per user
+        # Create a copy to avoid modifying the original dataframe
         df_filled = df.copy()
+        
+        # Calculate user means
         user_means = df_filled.groupby('userId')['rating'].transform('mean')
-        df_filled['rating'].fillna(user_means, inplace=True)
+        
+        # Fill missing ratings with mean rating per user
+        df_filled['rating'] = df_filled['rating'].fillna(user_means)
         
         # If still any missing values, fill with global mean
-        df_filled['rating'].fillna(df_filled['rating'].mean(), inplace=True)
+        global_mean = df_filled['rating'].mean()
+        df_filled['rating'] = df_filled['rating'].fillna(global_mean)
         
         return df_filled 

@@ -19,7 +19,8 @@ class DynamicMatrixFactorization(nn.Module):
     def forward(self, user_ids: torch.Tensor, item_ids: torch.Tensor) -> torch.Tensor:
         user_embeds = self.user_factors(user_ids)
         item_embeds = self.item_factors(item_ids)
-        return (user_embeds * item_embeds).sum(dim=1)
+        # Sum along the factors dimension and ensure output is 1D
+        return (user_embeds * item_embeds).sum(dim=1).squeeze(-1)
 
 class DynamicRecommender:
     def __init__(self, num_users: int, num_items: int, 
