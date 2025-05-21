@@ -87,14 +87,19 @@ def main():
     recommender.train_dynamic_models(user_sequences)
     
     # Compare models for a sample user
-    test_users = list(user_sequences.keys())[:3]  # Take first 3 users for demonstration
+    test_users = list(user_sequences.keys())[:2]  # Take first 2 users for demonstration
     
     # Create results directory for tables
     results_dir = "results"
     ensure_dir(results_dir)
     
-    for test_user_id in test_users:
-        print(f"\nAnalyzing recommendations for user {test_user_id}:")
+    # Initialize empty lists to store all recommendations
+    all_static_recommendations = []
+    all_dynamic_recommendations = []
+    all_summary_statistics = []
+    
+    for idx, test_user_id in enumerate(test_users, 1):
+        print(f"\nAnalyzing recommendations for user {idx}:")
         
         # Get user history
         user_history = user_sequences[test_user_id][-1]  # Last sequence for the user
@@ -104,51 +109,51 @@ def main():
             test_user_id, user_history, n_recommendations=10
         )
         
-        # Save recommendations comparison to CSV
-        comparison_df.to_csv(
-            os.path.join(results_dir, f"user_{test_user_id}_recommendations.csv"),
-            index=False
-        )
-        
-        # Display recommendations comparison
-        print("\nTop 10 Recommendations Comparison:")
-        print(comparison_df.to_string(index=False))
-        
         # Plot and save model metrics comparison
         print("\nModel Metrics Comparison:")
-        user_plot_dir = os.path.join(plots_dir, "dynamic", f"user_{test_user_id}")
+        user_plot_dir = os.path.join(plots_dir, "dynamic", f"user_{idx}")
         ensure_dir(user_plot_dir)
         recommender.plot_model_comparison(
             test_user_id,
             save_path=os.path.join(user_plot_dir, "metrics_comparison.png")
         )
         
-        # Create and save summary tables
-        static_recs = comparison_df[comparison_df['Model'] == 'STATIC']
-        dynamic_recs = comparison_df[comparison_df['Model'] != 'STATIC']
+        # Separate static and dynamic recommendations
+        static_recs = comparison_df[comparison_df['Model'] == 'STATIC'].copy()
+        dynamic_recs = comparison_df[comparison_df['Model'] != 'STATIC'].copy()
         
-        print("\nStatic Model Top 10 Recommendations:")
-        static_table = static_recs[['Rank', 'Item ID', 'Predicted Rating']]
-        print(static_table.to_string(index=False))
-        static_table.to_csv(
-            os.path.join(results_dir, f"user_{test_user_id}_static_recommendations.csv"),
-            index=False
-        )
+        # Add user ID column
+        static_recs['User'] = f"User {idx}"
+        dynamic_recs['User'] = f"User {idx}"
         
-        print("\nDynamic Models Top 10 Recommendations:")
-        print(dynamic_recs.to_string(index=False))
-        dynamic_recs.to_csv(
-            os.path.join(results_dir, f"user_{test_user_id}_dynamic_recommendations.csv"),
-            index=False
-        )
+        # Store recommendations
+        all_static_recommendations.append(static_recs)
+        all_dynamic_recommendations.append(dynamic_recs)
         
-        # Additional analysis
-        print("\nSummary Statistics:")
-        summary_stats = comparison_df.groupby('Model')['Predicted Rating'].agg(['mean', 'std', 'min', 'max'])
-        print(summary_stats)
-        summary_stats.to_csv(
-            os.path.join(results_dir, f"user_{test_user_id}_summary_statistics.csv")
-        )
+        # Get summary statistics
+        summary_stats = comparison_df.groupby('Model')['Predicted Rating'].agg(['mean', 'std', 'min', 'max']).reset_index()
+        summary_stats['User'] = f"User {idx}"
+        all_summary_statistics.append(summary_stats)
+        
+        print(f"\nProcessed recommendations for User {idx}")
+    
+    # Combine and save all recommendations
+    all_static_df = pd.concat(all_static_recommendations, ignore_index=True)
+    all_dynamic_df = pd.concat(all_dynamic_recommendations, ignore_index=True)
+    all_stats_df = pd.concat(all_summary_statistics, ignore_index=True)
+    
+    # Save combined recommendations
+    all_static_df.to_csv(os.path.join(results_dir, "static_recommendations.csv"), index=False)
+    all_dynamic_df.to_csv(os.path.join(results_dir, "dynamic_recommendations.csv"), index=False)
+    all_stats_df.to_csv(os.path.join(results_dir, "model_statistics.csv"), index=False)
+    
+    print("\nFinal Statistics:")
+    print("\nStatic Recommendations:")
+    print(all_static_df)
+    print("\nDynamic Recommendations:")
+    print(all_dynamic_df)
+    print("\nModel Statistics:")
+    print(all_stats_df)
 
 if __name__ == "__main__":
     main() 
