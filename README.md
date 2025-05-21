@@ -1,73 +1,73 @@
-# Dynamic Recommender System
+# Динамічна Рекомендаційна Система
 
-This project implements a dynamic recommendation system that combines collaborative filtering with dynamic systems modeling. The system uses both Matrix Factorization and NARX (Nonlinear AutoRegressive with eXogenous inputs) models to capture both static and temporal patterns in user preferences.
+Цей проект реалізує динамічну рекомендаційну систему, яка поєднує колаборативну фільтрацію з моделюванням динамічних систем. Система використовує як матричну факторизацію, так і моделі NARX (Нелінійна АвтоРегресія з еХзогенними входами) для виявлення як статичних, так і часових патернів у вподобаннях користувачів.
 
-## Features
+## Особливості
 
-- Data preprocessing and normalization
-- Dynamic time series modeling using NARX and LSTM
-- Matrix Factorization for collaborative filtering
-- System identification and evaluation metrics
-- Combined static and dynamic predictions
+- Попередня обробка та нормалізація даних
+- Динамічне моделювання часових рядів за допомогою NARX та LSTM
+- Матрична факторизація для колаборативної фільтрації
+- Ідентифікація системи та метрики оцінювання
+- Комбіновані статичні та динамічні передбачення
 
-## Requirements
+## Вимоги
 
-Install the required packages using:
+Встановіть необхідні пакети за допомогою:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Project Structure
+## Структура проекту
 
-- `data_processing.py`: Contains data preprocessing and preparation utilities
-- `dynamic_models.py`: Implements NARX and LSTM models for dynamic modeling
-- `recommender.py`: Main recommendation system combining static and dynamic approaches
-- `main.py`: Example script demonstrating system usage
+- `data_processing.py`: Містить утиліти для попередньої обробки та підготовки даних
+- `dynamic_models.py`: Реалізує моделі NARX та LSTM для динамічного моделювання
+- `recommender.py`: Основна рекомендаційна система, що поєднує статичні та динамічні підходи
+- `main.py`: Приклад скрипта, що демонструє використання системи
 
-## Usage
+## Використання
 
-1. Download the MovieLens dataset from https://grouplens.org/datasets/movielens/
-2. Update the `ratings_path` in `main.py` to point to your downloaded dataset
-3. Run the example:
+1. Завантажте набір даних MovieLens з https://grouplens.org/datasets/movielens/
+2. Оновіть `ratings_path` у `main.py`, вказавши шлях до завантаженого набору даних
+3. Запустіть приклад:
 
 ```bash
 python main.py
 ```
 
-## Implementation Details
+## Деталі реалізації
 
-### Data Processing
-- Normalizes user, item, and rating features
-- Creates time series sequences for each user
-- Handles missing values
+### Обробка даних
+- Нормалізує характеристики користувачів, елементів та рейтингів
+- Створює послідовності часових рядів для кожного користувача
+- Обробляє відсутні значення
 
-### Dynamic Modeling
-- NARX implementation for temporal pattern recognition
-- LSTM alternative for complex temporal dependencies
-- System identification with various evaluation metrics
+### Динамічне моделювання
+- Реалізація NARX для розпізнавання часових патернів
+- Альтернатива LSTM для складних часових залежностей
+- Ідентифікація системи з різними метриками оцінювання
 
-### Recommendation Generation
-- Combines static (Matrix Factorization) and dynamic (NARX/LSTM) predictions
-- Provides personalized recommendations based on user history
-- Supports top-N recommendation generation
+### Генерація рекомендацій
+- Поєднує статичні (Матрична факторизація) та динамічні (NARX/LSTM) передбачення
+- Надає персоналізовані рекомендації на основі історії користувача
+- Підтримує генерацію топ-N рекомендацій
 
-## Evaluation Metrics
+## Метрики оцінювання
 
-The system provides various evaluation metrics:
-- MSE (Mean Squared Error)
-- RMSE (Root Mean Squared Error)
-- R² Score
-- AIC (Akaike Information Criterion)
-- BIC (Bayesian Information Criterion)
+Система надає різні метрики оцінювання:
+- MSE (Середньоквадратична помилка)
+- RMSE (Корінь середньоквадратичної помилки)
+- R² оцінка
+- AIC (Інформаційний критерій Акаіке)
+- BIC (Байєсівський інформаційний критерій)
 
-## Example Output
+## Приклад виводу
 
 ```python
-Top 5 recommendations for user 1:
-Item 123: Predicted rating = 4.85
-Item 456: Predicted rating = 4.72
-Item 789: Predicted rating = 4.65
-Item 234: Predicted rating = 4.58
-Item 567: Predicted rating = 4.52
+Топ-5 рекомендацій для користувача 1:
+Елемент 123: Прогнозований рейтинг = 4.85
+Елемент 456: Прогнозований рейтинг = 4.72
+Елемент 789: Прогнозований рейтинг = 4.65
+Елемент 234: Прогнозований рейтинг = 4.58
+Елемент 567: Прогнозований рейтинг = 4.52
 ``` 

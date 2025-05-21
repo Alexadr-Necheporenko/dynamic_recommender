@@ -10,7 +10,7 @@ def main():
     # Load and preprocess MovieLens data
     # Note: You need to download the MovieLens dataset first
     # https://grouplens.org/datasets/movielens/
-    ratings_path = "path_to_ratings.csv"  # Update this path
+    ratings_path = "ml-32m/ratings.csv"  # Updated path to the ratings file
     df = preprocessor.load_movielens_data(ratings_path)
     
     # Normalize features
