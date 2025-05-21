@@ -56,6 +56,11 @@ class SystemIdentification:
         X_train = torch.FloatTensor(X_train)
         y_train = torch.FloatTensor(y_train)
         
+        # Adjust batch size if dataset is too small
+        batch_size = min(batch_size, len(X_train))
+        if batch_size == 0:
+            batch_size = 1  # Ensure minimum batch size of 1
+        
         # Initialize model based on type
         if self.model_type == 'narx':
             self.model = NARX(
@@ -77,6 +82,7 @@ class SystemIdentification:
         for epoch in range(epochs):
             self.model.train()
             total_loss = 0
+            num_batches = 0
             
             # Mini-batch training
             for i in range(0, len(X_train), batch_size):
@@ -95,8 +101,9 @@ class SystemIdentification:
                 optimizer.step()
                 
                 total_loss += loss.item()
+                num_batches += 1
             
-            avg_loss = total_loss / (len(X_train) // batch_size)
+            avg_loss = total_loss / num_batches
             losses.append(avg_loss)
             
         return losses

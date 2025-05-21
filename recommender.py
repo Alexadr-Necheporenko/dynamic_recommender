@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from typing import List, Dict, Tuple
-from .dynamic_models import SystemIdentification
+from dynamic_models import SystemIdentification
 from sklearn.model_selection import train_test_split
 
 class DynamicMatrixFactorization(nn.Module):
@@ -74,6 +74,9 @@ class DynamicRecommender:
             X = sequences[:, :-1]  # All but last rating in each sequence
             y = sequences[:, -1]   # Last rating in each sequence
             
+            # Reshape X to have the correct dimensions [batch_size, sequence_length, features]
+            X = X.reshape(X.shape[0], X.shape[1], 1)
+            
             # Split into train and test sets
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=test_size, random_state=42
@@ -105,9 +108,11 @@ class DynamicRecommender:
         dynamic_pred = None
         if user_id in self.dynamic_models and user_history is not None:
             dynamic_model = self.dynamic_models[user_id]['model']
+            # Reshape user_history to match training data format [batch_size, sequence_length, features]
+            history_reshaped = user_history.reshape(1, -1, 1)
             with torch.no_grad():
                 dynamic_pred = dynamic_model.model(
-                    torch.FloatTensor(user_history).unsqueeze(0)
+                    torch.FloatTensor(history_reshaped)
                 )[0].item()
         
         # Combine predictions
