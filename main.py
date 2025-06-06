@@ -82,8 +82,6 @@ def split_user_sequences(user_sequences, test_size=0.2, random_state=42):
 
 def compare_dynamic_models(recommender, test_sequences, test_users, plots_dir):
     """Compare different dynamic models (LSTM, NARX, SINDY) and analyze their performance"""
-    print("\n=== Порівняння динамічних моделей ===")
-    
     # Create directory for model comparisons
     model_comparison_dir = os.path.join(plots_dir, "model_comparison")
     ensure_dir(model_comparison_dir)
@@ -154,11 +152,7 @@ def compare_dynamic_models(recommender, test_sequences, test_users, plots_dir):
                         successful_predictions += 1
                         
                 except Exception as e:
-                    print(f"Помилка при оцінці моделі {model_type} для користувача {user_id}: {str(e)}")
                     continue
-    
-    print(f"\nЗагальна кількість тестових послідовностей: {total_sequences}")
-    print(f"Успішних прогнозів: {successful_predictions}")
     
     # Calculate baseline metrics
     all_true_values = []
@@ -199,11 +193,6 @@ def compare_dynamic_models(recommender, test_sequences, test_users, plots_dir):
         np.full_like(all_true_values, baseline_pred),
         np.array(all_true_values)
     )
-    
-    print("\nБазові метрики:")
-    print(f"Baseline MSE: {baseline_metrics['mse']:.4f}")
-    print(f"Baseline RMSE: {baseline_metrics['rmse']:.4f}")
-    print(f"Кількість зразків: {len(all_true_values)}")
     
     # Create comparison plots
     metrics = ['mse', 'rmse', 'mae', 'r2']
@@ -253,40 +242,7 @@ def compare_dynamic_models(recommender, test_sequences, test_users, plots_dir):
               f"{metrics['mae']:>10.4f} {r2_str:>10} {adaptive_improvement:>11.2f}% {metrics['n_samples']:>8}")
     print("-" * 120)
     
-    # Create prediction vs true value scatter plots for each model
-    for model_type in model_metrics:
-        if not all_predictions[model_type]['pred']:
-            continue
-            
-        plt.figure(figsize=(10, 10))
-        
-        # Plot dynamic predictions
-        plt.subplot(2, 1, 1)
-        plt.scatter(all_predictions[model_type]['true'], 
-                   all_predictions[model_type]['pred'],
-                   alpha=0.5, label='Динамічний')
-        plt.plot([0, 1], [0, 1], 'r--', label='Ідеальний прогноз')
-        plt.title(f'Динамічні прогнози {model_type}')
-        plt.xlabel('Справжні значення')
-        plt.ylabel('Прогнозовані значення')
-        plt.legend()
-        plt.grid(True)
-        
-        # Plot adaptive predictions
-        plt.subplot(2, 1, 2)
-        plt.scatter(all_predictions[model_type]['true'],
-                   all_predictions[model_type]['adaptive'],
-                   alpha=0.5, label='Адаптивний')
-        plt.plot([0, 1], [0, 1], 'r--', label='Ідеальний прогноз')
-        plt.title(f'Адаптивні прогнози {model_type}')
-        plt.xlabel('Справжні значення')
-        plt.ylabel('Прогнозовані значення')
-        plt.legend()
-        plt.grid(True)
-        
-        plt.tight_layout()
-        plt.savefig(os.path.join(model_comparison_dir, f'{model_type}_predictions_scatter.png'))
-        plt.close()
+    return successful_predictions, total_sequences, all_predictions
 
 def predict_next_participants(recommender, user_sequences, num_participants=5, plots_dir="plots"):
     """Create prediction plots for a few participants for each dynamic method"""
@@ -423,25 +379,20 @@ def main():
     
     # Load and preprocess data
     # Assuming 'ratings.csv' and 'movies.csv' are in the ml-32m directory
-    ratings_path = "ml-32m/ratings_sampled_50k.csv" # Use the sampled data path
-    movies_path = "ml-32m/movies_sampled_50k.csv" # Use the sampled data path
-
+    ratings_path = "ml-32m/ratings.csv"
+    movies_path = "ml-32m/movies.csv"
     # Check if ratings_path exists
     if not os.path.exists(ratings_path):
          print(f"Помилка: Файл рейтингів не знайдено за шляхом: {ratings_path}")
          # Optionally, fall back to default or exit
-         ratings_path = "ml-32m/ratings.csv"
-         print(f"Спроба завантажити файл за замовчуванням: {ratings_path}")
-         if not os.path.exists(ratings_path):
-             print("Помилка: Файл рейтингів за замовчуванням також не знайдено. Вихід.")
-             exit()
+         exit()
 
     # Load and preprocess data using existing methods
     print(f"\nLoading data from {ratings_path}...")
     # Use load_movielens_data to load ratings
-    df = preprocessor.load_movielens_data(ratings_path)
+    df = preprocessor.load_movielens_data(ratings_path, movies_path)
     print("Data loaded successfully.")
-
+    print(df.columns)
     # Normalize features
     print("Normalizing features...")
     df_normalized = preprocessor.normalize_features(df)
@@ -499,7 +450,7 @@ def main():
     print("\nЗбір прогнозів та оцінка ефективності на тестових даних...")
     
     # For now, let's pass test_sequences to compare_dynamic_models
-    compare_dynamic_models(recommender, test_sequences, list(test_sequences.keys()), plots_dir)
+    successful_predictions, total_sequences, all_predictions = compare_dynamic_models(recommender, test_sequences, list(test_sequences.keys()), plots_dir)
 
     # --- Додаткове порівняння та візуалізація підходів --- #
     print("\n=== Додаткове порівняння та візуалізація підходів ===")
@@ -517,41 +468,38 @@ def main():
         # Отримуємо порівняльну таблицю рекомендацій для випадкового користувача
         # Використовуємо частину тестової послідовності як історію для цієї демонстрації
         # Моделі для порівняння: static, lstm, narx, sindy
-        comparison_df = recommender.compare_recommendation_approaches(
+        comparison_dfs = recommender.compare_recommendation_approaches(
             sample_user_id,
             np.array(sample_test_sequence),
             n_recommendations=10, # Кількість рекомендацій для порівняння
             model_types=['LSTM', 'NARX', 'SINDY'] # Зазначаємо, які динамічні моделі включити
         )
         
-        print("\nТаблиця порівняння рекомендацій для випадкового користувача:")
-        # Merge with movie titles for display
-        # Load full movie titles data to ensure all titles are available
-        full_movies_path = "ml-32m/movies.csv" # Assuming full movies file is here
-        try:
-            full_movies_df = pd.read_csv(full_movies_path)
-            movie_titles_map = full_movies_df[['movieId', 'title']].drop_duplicates().set_index('movieId')
-        except FileNotFoundError:
-            print(f"Warning: Full movies file not found at {full_movies_path}. Movie titles may not be displayed.")
-            movie_titles_map = pd.DataFrame(columns=['title'], index=pd.Index([], name='movieId')) # Create empty map if file not found
-
-        comparison_df_with_titles = comparison_df.copy()
-        # Ensure 'ID об\'єкта' column is of compatible type with movie_titles_map index (e.g., int)
-        comparison_df_with_titles['ID об\'єкта'] = comparison_df_with_titles['ID об\'єкта'].astype(int)
-        # Perform the join using the full movie titles map
-        comparison_df_with_titles = comparison_df_with_titles.join(movie_titles_map, on='ID об\'єкта', how='left')
-
-        # If a title is still missing after join (shouldn't happen if ID exists in full movies file),
-        # you could fill it with a placeholder like 'Unknown Title'
-        # comparison_df_with_titles['title'] = comparison_df_with_titles['title'].fillna('Unknown Title')
-
-        # Rearrange columns for better display
-        cols = ['Підхід', 'Ранг', 'ID об\'єкта', 'title', 'Прогнозований рейтинг']
-        # Ensure all columns exist before reordering
-        cols_to_keep = [col for col in cols if col in comparison_df_with_titles.columns]
-        comparison_df_with_titles = comparison_df_with_titles[cols_to_keep]
-
-        print(comparison_df_with_titles)
+        print("\nТаблиці порівняння рекомендацій для випадкового користувача:")
+        # Виводимо окремі таблиці для кожного підходу
+        for approach_name, df in comparison_dfs.items():
+            print(f"\n=== {approach_name} ===")
+            if df.empty:
+                print("Немає рекомендацій для цього підходу")
+                continue
+                
+            # Додаємо назви фільмів
+            df_with_titles = df.copy()
+            # Переконуємося, що колонка 'ID об\'єкта' існує
+            if 'ID об\'єкта' in df_with_titles.columns:
+                # Конвертуємо ID об'єкта в int
+                df_with_titles['ID об\'єкта'] = df_with_titles['ID об\'єкта'].astype(int)
+                # Додаємо назви фільмів зі словника
+                print(df_with_titles.columns)
+                # Визначаємо колонки для виводу
+                cols = ['Ранг', 'ID об\'єкта', 'title', 'Прогнозований рейтинг']
+                cols_to_keep = [col for col in cols if col in df_with_titles.columns]
+                df_with_titles = df_with_titles[cols_to_keep]
+                
+                print(df_with_titles)
+            else:
+                print("Помилка: відсутня колонка 'ID об\'єкта'")
+            print("\n" + "="*50 + "\n")
         
         # Побудова графіків порівняння рекомендацій
         recommendation_comparison_dir = os.path.join(plots_dir, "recommendation_comparison")
@@ -559,7 +507,7 @@ def main():
         
         print("\nПобудова графіків порівняння рекомендацій...")
         recommender.plot_recommendation_comparison(
-            comparison_df,
+            comparison_dfs,
             save_path=os.path.join(recommendation_comparison_dir, "recommendation_comparison_plots.png"),
             n_recommendations=10 # Pass the n_recommendations value
         )

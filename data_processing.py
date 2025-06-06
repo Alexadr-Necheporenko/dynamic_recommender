@@ -8,12 +8,15 @@ class DataPreprocessor:
         self.user_scaler = MinMaxScaler()
         self.item_scaler = MinMaxScaler()
         self.rating_scaler = MinMaxScaler()
+        self.movie_scaler = MinMaxScaler()
         
-    def load_movielens_data(self, ratings_path: str) -> pd.DataFrame:
+    def load_movielens_data(self, ratings_path: str, movies_path: str) -> pd.DataFrame:
         """
         Load MovieLens dataset
         """
-        df = pd.read_csv(ratings_path)
+        df1 = pd.read_csv(ratings_path)
+        df2 = pd.read_csv(movies_path)
+        df = pd.merge(df1,df2,on='movieId')
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
         return df
     
@@ -24,6 +27,7 @@ class DataPreprocessor:
         df_normalized = df.copy()
         df_normalized['userId'] = self.user_scaler.fit_transform(df[['userId']])
         df_normalized['movieId'] = self.item_scaler.fit_transform(df[['movieId']])
+        df_normalized['title'] = df['title']
         df_normalized['rating'] = self.rating_scaler.fit_transform(df[['rating']])
         return df_normalized
     

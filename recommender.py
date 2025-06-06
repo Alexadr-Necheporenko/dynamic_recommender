@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 from sklearn.metrics import mean_squared_error
+from sklearn.linear_model import LinearRegression
 
 class DynamicMatrixFactorization(nn.Module):
     def __init__(self, num_users: int, num_items: int, num_factors: int = 50):
@@ -149,6 +150,25 @@ class NARX(nn.Module):
             pred = pred * (self.y_std + epsilon) + self.y_mean
             return pred.numpy()
 
+class SINDYModel:
+    def __init__(self, input_dim=10):
+        self.input_dim = input_dim
+        self.model = LinearRegression()
+        
+    def fit(self, X, y):
+        # Reshape input if needed
+        if len(X.shape) == 3:
+            X = X.reshape(X.shape[0], -1)
+        self.model.fit(X, y)
+        # Remove print statements for coefficients
+        return self
+        
+    def predict(self, X):
+        # Reshape input if needed
+        if len(X.shape) == 3:
+            X = X.reshape(X.shape[0], -1)
+        return self.model.predict(X)
+
 class SystemIdentification:
     def __init__(self):
         self.model = None
@@ -175,9 +195,6 @@ class SystemIdentification:
         self.model = LinearRegression()
         self.model.fit(X_scaled, y_scaled)
         
-        # Debugging: print learned coefficients and intercept
-        print(f"SINDY (Linear Regression) Coeffs: {self.model.coef_}")
-        print(f"SINDY (Linear Regression) Intercept: {self.model.intercept_}")
         
     def predict(self, x):
         # Ensure input has correct dimensions (batch_size, n_features)
@@ -558,12 +575,18 @@ class DynamicRecommender:
     
     def compare_recommendation_approaches(self, user_id: int, user_history: np.ndarray,
                                         n_recommendations: int = 10, 
-                                        model_types: List[str] = None) -> pd.DataFrame:
+                                        model_types: List[str] = None) -> Dict[str, pd.DataFrame]:
         """
         Порівняння різних підходів до рекомендацій
+        
+        Returns:
+            Dict[str, pd.DataFrame]: Словник з DataFrame для кожного підходу
         """
         if model_types is None:
             model_types = list(self.dynamic_models.get(user_id, {}).keys())
+        
+        # Словник для зберігання DataFrame для кожного підходу
+        approach_dfs = {}
         
         # Отримуємо статичні рекомендації
         static_recs = []
@@ -577,17 +600,15 @@ class DynamicRecommender:
         static_recs.sort(key=lambda x: x[1], reverse=True)
         static_recs = static_recs[:n_recommendations]
         
-        # Дані для порівняння
-        comparison_data = []
-        
-        # Додаємо статичні рекомендації
+        # Створюємо DataFrame для статичних рекомендацій
+        static_data = []
         for rank, (item_id, pred) in enumerate(static_recs, 1):
-            comparison_data.append({
-                'Підхід': 'Статичний',
+            static_data.append({
                 'Ранг': rank,
                 'ID об\'єкта': item_id,
                 'Прогнозований рейтинг': pred
             })
+        approach_dfs['Статичний'] = pd.DataFrame(static_data)
         
         # Додаємо рекомендації з динамічними моделями
         for model_type in model_types:
@@ -596,41 +617,35 @@ class DynamicRecommender:
                 dyn_recs = self.get_recommendations(
                     user_id, user_history, n_recommendations, model_type
                 )
-
-                print(f"\n--- DEBUGGING RECOMMENDATIONS for user {user_id} ({model_type}) ---")
-                print(f"Dynamic Recommendations ({model_type.upper()}):")
-                print(dyn_recs)
-                print("---------------------------------------")
-                
+                                # Створюємо DataFrame для динамічних рекомендацій
+                dynamic_data = []
                 for rank, (item_id, pred) in enumerate(dyn_recs, 1):
-                    comparison_data.append({
-                        'Підхід': f'Динамічний ({model_type.upper()})',
+                    dynamic_data.append({
                         'Ранг': rank,
                         'ID об\'єкта': item_id,
                         'Прогнозований рейтинг': pred
                     })
+                approach_dfs[f'Динамічний ({model_type.upper()})'] = pd.DataFrame(dynamic_data)
                     
                 # Адаптивні рекомендації з поведінковою моделлю
                 adapt_recs = self.get_adaptive_recommendations(
                     user_id, user_history, n_recommendations, model_type
                 )
-
-                print(f"Adaptive Recommendations ({model_type.upper()}):")
-                print(adapt_recs)
-                print("---------------------------------------")
                 
+                # Створюємо DataFrame для адаптивних рекомендацій
+                adaptive_data = []
                 for rank, (item_id, pred) in enumerate(adapt_recs, 1):
-                    comparison_data.append({
-                        'Підхід': f'Адаптивний ({model_type.upper()})',
+                    adaptive_data.append({
                         'Ранг': rank,
                         'ID об\'єкта': item_id,
                         'Прогнозований рейтинг': pred
                     })
+                approach_dfs[f'Адаптивний ({model_type.upper()})'] = pd.DataFrame(adaptive_data)
+                
             except ValueError:
                 continue  # Пропускаємо моделі, які не доступні
         
-        # Створюємо DataFrame з даними
-        return pd.DataFrame(comparison_data)
+        return approach_dfs
     
     def evaluate_recommendation_approaches(self, user_id: int, user_history: np.ndarray,
                                          test_items: List[Tuple[int, float]],
@@ -714,24 +729,29 @@ class DynamicRecommender:
         
         return metrics
         
-    def plot_recommendation_comparison(self, comparison_df: pd.DataFrame, 
+    def plot_recommendation_comparison(self, comparison_dfs: Dict[str, pd.DataFrame], 
                                      save_path: str = None,
                                      n_recommendations: int = 10):
         """
         Візуалізація порівняння різних підходів до рекомендацій
         
         Args:
-            comparison_df: DataFrame з даними порівняння (з compare_recommendation_approaches)
+            comparison_dfs: Словник з DataFrame'ами для кожного підходу
             save_path: Шлях для збереження графіка
-            n_recommendations: Кількість рекомендацій, що використовується для визначення перекриття на тепловій карті.
+            n_recommendations: Кількість рекомендацій для порівняння
         """
-        if comparison_df.empty:
+        if not comparison_dfs:
             print("Немає даних для візуалізації порівняння рекомендацій.")
             return
 
+        # Об'єднуємо всі DataFrame'и в один для візуалізації
+        combined_df = pd.concat([
+            df.assign(Підхід=approach_name)
+            for approach_name, df in comparison_dfs.items()
+        ], ignore_index=True)
+
         # Обчислюємо середні рейтинги по кожному підходу та рангу
-        # Використовуємо pivot_table для зручності обчислення середнього рейтингу для кожного підходу на кожному рангу
-        avg_ratings_pivot = comparison_df.pivot_table(
+        avg_ratings_pivot = combined_df.pivot_table(
             values='Прогнозований рейтинг',
             index='Ранг',
             columns='Підхід',
@@ -759,17 +779,11 @@ class DynamicRecommender:
         else:
             plt.show()
 
-        # --- Графіки порівняння прогнозованих рейтингів для топ-N об'єктів (розділені) ---
+        # Отримуємо унікальний список топ-N об'єктів
+        top_n_item_ids = combined_df.sort_values(by='Ранг').head(n_recommendations)['ID об\'єкта'].unique()
 
-        # Отримуємо унікальний список топ-N об'єктів з comparison_df
-        # Можемо взяти топ N з будь-якого підходу, оскільки вони виявилися однаковими
-        top_n_item_ids = comparison_df[comparison_df['Підхід'] == comparison_df['Підхід'].iloc[0]] \
-                           .sort_values(by='Ранг').head(n_recommendations)['ID об\'єкта'].tolist()
-
-        # Фільтруємо DataFrame, щоб залишити лише дані для цих топ-N об'єктів
-        top_items_comparison_df = comparison_df[comparison_df['ID об\'єкта'].isin(top_n_item_ids)].copy()
-
-        # Перетворюємо ID об'єктів на строковий тип або категорійний
+        # Фільтруємо DataFrame для топ-N об'єктів
+        top_items_comparison_df = combined_df[combined_df['ID об\'єкта'].isin(top_n_item_ids)].copy()
         top_items_comparison_df['ID об\'єкта'] = top_items_comparison_df['ID об\'єкта'].astype(str)
 
         # Визначаємо групи підходів для окремих графіків
