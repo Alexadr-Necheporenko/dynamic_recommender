@@ -127,7 +127,7 @@ class SINDy:
     def plot_3d_dynamics(self, save_path: str = None):
         """Plot 3D visualization of the system dynamics"""
         if self.training_data is None:
-            print("No training data available. Please fit the model first.")
+            print("Немає даних для навчання. Будь ласка, спочатку навчіть модель.")
             return
         
         X, y = self.training_data
@@ -143,15 +143,15 @@ class SINDy:
         
         # Plot actual values
         scatter1 = ax1.scatter(X[:, 0], X[:, 1], y, 
-                             c='blue', alpha=0.6, label='Actual')
+                             c='blue', alpha=0.6, label='Фактичні')
         # Plot predicted values
         scatter2 = ax1.scatter(X[:, 0], X[:, 1], y_pred, 
-                             c='red', alpha=0.4, label='Predicted')
+                             c='red', alpha=0.4, label='Прогнозовані')
         
-        ax1.set_xlabel('Feature 1')
-        ax1.set_ylabel('Feature 2')
-        ax1.set_zlabel('Target')
-        ax1.set_title('Actual vs Predicted Values in 3D')
+        ax1.set_xlabel('Ознака 1')
+        ax1.set_ylabel('Ознака 2')
+        ax1.set_zlabel('Цільова')
+        ax1.set_title('Фактичні та прогнозовані значення в 3D')
         ax1.legend()
         
         # Second subplot: Feature importance
@@ -165,8 +165,8 @@ class SINDy:
         ax2.barh(pos, coeffs[sorted_idx])
         ax2.set_yticks(pos)
         ax2.set_yticklabels(np.array(feature_names)[sorted_idx])
-        ax2.set_xlabel('|Coefficient|')
-        ax2.set_title('Feature Importance in SINDy Model')
+        ax2.set_xlabel('|Коефіцієнт|')
+        ax2.set_title('Важливість ознак у моделі SINDy')
         
         plt.tight_layout()
         
@@ -185,12 +185,12 @@ class SystemIdentification:
     def save_training_plot(self, save_path: str):
         """Save training history plot to file"""
         plt.figure(figsize=(10, 6))
-        plt.plot(self.training_history['loss'], label='Training Loss')
+        plt.plot(self.training_history['loss'], label='Втрати на навчанні')
         if self.training_history['val_loss']:
-            plt.plot(self.training_history['val_loss'], label='Validation Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.title(f'{self.model_type.upper()} Training History')
+            plt.plot(self.training_history['val_loss'], label='Втрати на валідації')
+        plt.xlabel('Епоха')
+        plt.ylabel('Втрати')
+        plt.title(f'Історія навчання {self.model_type.upper()}')
         plt.legend()
         plt.grid(True)
         plt.savefig(save_path)
@@ -199,9 +199,10 @@ class SystemIdentification:
     def save_prediction_plot(self, X_test: np.ndarray, y_test: np.ndarray, save_path: str):
         """Save prediction comparison plot to file"""
         if self.model_type == 'sindy':
-            y_pred = self.model.predict(X_test)
             # For SINDy, create 3D visualization
-            self.model.plot_3d_dynamics(save_path)
+            # Change filename for SINDy global dynamics plot
+            sindy_save_path = os.path.join(os.path.dirname(save_path), "sindy", "глобальна_динаміка_sindy.png")
+            self.model.plot_3d_dynamics(sindy_save_path)
             return
         
         self.model.eval()
@@ -216,9 +217,9 @@ class SystemIdentification:
         plt.figure(figsize=(10, 6))
         plt.scatter(y_test, y_pred, alpha=0.5)
         plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2)
-        plt.xlabel('Actual Values')
-        plt.ylabel('Predicted Values')
-        plt.title(f'{self.model_type.upper()} Predictions vs Actual')
+        plt.xlabel('Фактичні значення')
+        plt.ylabel('Прогнозовані значення')
+        plt.title(f'Прогнози {self.model_type.upper()} проти фактичних')
         plt.grid(True)
         plt.savefig(save_path)
         plt.close()
@@ -374,12 +375,12 @@ class SystemIdentification:
     def plot_training_history(self, title: str = None):
         """Plot training and validation loss history"""
         plt.figure(figsize=(10, 6))
-        plt.plot(self.training_history['loss'], label='Training Loss')
+        plt.plot(self.training_history['loss'], label='Втрати на навчанні')
         if self.training_history['val_loss']:
-            plt.plot(self.training_history['val_loss'], label='Validation Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.title(title or f'{self.model_type.upper()} Training History')
+            plt.plot(self.training_history['val_loss'], label='Втрати на валідації')
+        plt.xlabel('Епоха')
+        plt.ylabel('Втрати')
+        plt.title(title or f'Історія навчання {self.model_type.upper()}')
         plt.legend()
         plt.grid(True)
         plt.show()
@@ -401,8 +402,159 @@ class SystemIdentification:
         plt.figure(figsize=(10, 6))
         plt.scatter(y_test, y_pred, alpha=0.5)
         plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2)
-        plt.xlabel('Actual Values')
-        plt.ylabel('Predicted Values')
-        plt.title(title or f'{self.model_type.upper()} Predictions vs Actual')
+        plt.xlabel('Фактичні значення')
+        plt.ylabel('Прогнозовані значення')
+        plt.title(title or f'Прогнози {self.model_type.upper()} проти фактичних')
         plt.grid(True)
-        plt.show() 
+        plt.show()
+        
+    def forecast_future_behavior(self, X_history: np.ndarray, n_steps_ahead: int = 5) -> np.ndarray:
+        """
+        Прогнозування майбутньої поведінки користувача на n кроків вперед
+        
+        Args:
+            X_history: Масив історії взаємодії користувача
+            n_steps_ahead: Кількість кроків для прогнозування
+            
+        Returns:
+            np.ndarray: Прогнозовані значення
+        """
+        # Перевіряємо, чи модель навчена
+        if self.model is None:
+            raise ValueError("Модель не навчена. Виконайте метод train_model спочатку.")
+        
+        # Копіюємо останню послідовність для прогнозування
+        if len(X_history.shape) == 3:  # [batch_size, seq_len, features]
+            last_sequence = X_history[-1:].copy()  # Беремо останню послідовність
+        else:  # [seq_len, features] або [seq_len]
+            last_sequence = X_history.reshape(1, -1, 1 if len(X_history.shape) == 1 else X_history.shape[-1])
+        
+        # Масив для збереження прогнозів
+        forecasts = np.zeros(n_steps_ahead)
+        
+        # Ітеративне прогнозування
+        for step in range(n_steps_ahead):
+            # Робимо прогноз для поточної послідовності
+            if self.model_type == 'sindy':
+                # Для SINDy моделі переформатуємо вхідні дані
+                flat_sequence = last_sequence.reshape(1, -1)
+                next_value = self.model.predict(flat_sequence)[0]
+            else:
+                # Для нейронних моделей (NARX, LSTM)
+                tensor_seq = torch.FloatTensor(last_sequence)
+                with torch.no_grad():
+                    if self.model_type == 'narx':
+                        next_value, _ = self.model(tensor_seq)
+                        next_value = next_value.item()
+                    else:
+                        next_value = self.model(tensor_seq).item()
+            
+            # Зберігаємо прогноз
+            forecasts[step] = next_value
+            
+            # Оновлюємо послідовність для наступного прогнозу
+            if len(last_sequence.shape) == 3:
+                # Зсуваємо послідовність і додаємо новий прогноз
+                new_seq = np.roll(last_sequence[0], shift=-1, axis=0)
+                new_seq[-1] = next_value
+                last_sequence[0] = new_seq
+            
+        return forecasts
+    
+    def evaluate_forecast_accuracy(self, X_test: np.ndarray, y_test: np.ndarray, 
+                                 baseline_predictions: np.ndarray = None) -> dict:
+        """
+        Оцінка точності прогнозування та порівняння з базовою моделлю
+        
+        Args:
+            X_test: Тестові дані вхідних послідовностей
+            y_test: Фактичні значення для порівняння
+            baseline_predictions: Прогнози базової моделі (наприклад, середнє значення)
+            
+        Returns:
+            dict: Метрики оцінки
+        """
+        # Генеруємо прогнози на тестових даних
+        if self.model_type == 'sindy':
+            y_pred = self.model.predict(X_test)
+        else:
+            self.model.eval()
+            with torch.no_grad():
+                X_test_tensor = torch.FloatTensor(X_test)
+                if self.model_type == 'narx':
+                    y_pred, _ = self.model(X_test_tensor)
+                else:
+                    y_pred = self.model(X_test_tensor)
+                y_pred = y_pred.numpy()
+        
+        # Обчислюємо метрики
+        mse = mean_squared_error(y_test, y_pred)
+        rmse = np.sqrt(mse)
+        mae = np.mean(np.abs(y_test - y_pred))
+        r2 = r2_score(y_test, y_pred)
+        
+        metrics = {
+            'mse': mse,
+            'rmse': rmse,
+            'mae': mae,
+            'r2': r2
+        }
+        
+        # Порівняння з базовою моделлю, якщо вона надана
+        if baseline_predictions is not None:
+            baseline_mse = mean_squared_error(y_test, baseline_predictions)
+            baseline_rmse = np.sqrt(baseline_mse)
+            baseline_mae = np.mean(np.abs(y_test - baseline_predictions))
+            baseline_r2 = r2_score(y_test, baseline_predictions)
+            
+            metrics['baseline_mse'] = baseline_mse
+            metrics['baseline_rmse'] = baseline_rmse
+            metrics['baseline_mae'] = baseline_mae
+            metrics['baseline_r2'] = baseline_r2
+            
+            # Відсоткове покращення
+            metrics['mse_improvement'] = (baseline_mse - mse) / baseline_mse * 100
+            metrics['rmse_improvement'] = (baseline_rmse - rmse) / baseline_rmse * 100
+            metrics['mae_improvement'] = (baseline_mae - mae) / baseline_mae * 100
+        
+        return metrics
+        
+    def plot_forecast_visualization(self, X_history: np.ndarray, actual_future: np.ndarray = None, 
+                                  n_steps: int = 5, save_path: str = None):
+        """
+        Візуалізація прогнозу поведінки користувача
+        
+        Args:
+            X_history: Історія взаємодій користувача
+            actual_future: Фактичні майбутні значення (якщо доступні)
+            n_steps: Кількість кроків для прогнозування
+            save_path: Шлях для збереження графіка
+        """
+        forecast = self.forecast_future_behavior(X_history, n_steps)
+        
+        history = X_history.flatten() if len(X_history.shape) == 1 else X_history[-1].flatten()
+        time_points = np.arange(len(history) + n_steps)
+        
+        plt.figure(figsize=(12, 6))
+        
+        plt.plot(time_points[:len(history)], history, 'b-', label='Історія взаємодій')
+        
+        plt.plot(time_points[len(history):], forecast, 'r--', label='Прогноз')
+        
+        if actual_future is not None:
+            actual_values = actual_future.flatten()[:n_steps]
+            plt.plot(time_points[len(history):len(history)+len(actual_values)], 
+                   actual_values, 'g-', label='Фактичні значення')
+        
+       
+        plt.xlabel('Часовий крок')
+        plt.ylabel('Значення взаємодії')
+        plt.title(f'Прогноз майбутньої поведінки користувача ({self.model_type.upper()})')
+        plt.legend()
+        plt.grid(True)
+        
+        if save_path:
+            plt.savefig(save_path)
+            plt.close()
+        else:
+            plt.show() 
